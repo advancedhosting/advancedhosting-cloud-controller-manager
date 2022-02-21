@@ -3,6 +3,16 @@ entries:
   ah-ccm:
   - apiVersion: v2
     appVersion: 0.1.5
+    created: "2022-02-21T18:45:47.667925802Z"
+    description: A Helm chart for Kubernetes
+    digest: 52764092bc2fcd7c1cd1aa164e2f513c38f07f6ae19aa21c1ecdfbe5141b9980
+    name: ah-ccm
+    type: application
+    urls:
+    - https://github.com/advancedhosting/advancedhosting-cloud-controller-manager/releases/download/helm-chart-ah-ccm-0.1.8/ah-ccm-0.1.8.tgz
+    version: 0.1.8
+  - apiVersion: v2
+    appVersion: 0.1.5
     created: "2022-02-21T15:41:56.288408698Z"
     description: A Helm chart for Kubernetes
     digest: 3b21a1c024bc0b8ccd25b6ffc166a8573ef49e6e41d3f02bbc2ad297129518ce
