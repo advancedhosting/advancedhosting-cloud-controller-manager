@@ -46,10 +46,6 @@ spec:
             - name: AH_CLUSTER_ID
               value: {{ .Values.clusterID }}
             {{- end }}
-            {{ - if .Values.clusterNumber }}
-            - name: AH_CLUSTER_NUMBER
-              value: {{ .Values.clusterNumber }}
-            {{- end }}
             {{- if .Values.apiUrl }}
             - name: AH_API_URL
               value: {{ .Values.apiUrl }}
