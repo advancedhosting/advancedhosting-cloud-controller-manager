@@ -35,6 +35,8 @@ const (
 	ahAPIBaseURL            = "AH_API_URL"
 	ahClusterPrivateNetwork = "AH_CLUSTER_PRIVATE_NETWORK_NUMBER"
 	ahClusterDatacenter     = "AH_CLUSTER_DATACENTER"
+	ahClusterID             = "AH_CLUSTER_ID"
+	ahClusterNumber         = "AH_CLUSTER_NUMBER"
 )
 
 type cloud struct {
@@ -48,6 +50,8 @@ type cloud struct {
 type clusterInfo struct {
 	PrivateNetworkID string
 	DatacenterID     string
+	ID               string
+	Number           string
 	kclient          kubernetes.Interface
 }
 
@@ -105,7 +109,10 @@ func newClusterInfo(client *ah.APIClient) (*clusterInfo, error) {
 		return nil, fmt.Errorf("error getting datacenterID: %v", err)
 	}
 
-	return &clusterInfo{PrivateNetworkID: pnID, DatacenterID: datacenterID}, nil
+	clusterID := os.Getenv(ahClusterID)
+	clusterNumber := os.Getenv(ahClusterNumber)
+
+	return &clusterInfo{PrivateNetworkID: pnID, DatacenterID: datacenterID, ID: clusterID, Number: clusterNumber}, nil
 }
 
 func privateNetworkIDbyNumber(pnNumber string, client *ah.APIClient) (string, error) {
