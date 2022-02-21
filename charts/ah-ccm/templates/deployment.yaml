@@ -42,7 +42,7 @@ spec:
               value: {{ .Values.privateNetworkNumber }}
             - name: AH_CLUSTER_DATACENTER
               value: {{ .Values.datacenterSlug }}
-            {{ - if .Values.clusterID }}
+            {{- if .Values.clusterID }}
             - name: AH_CLUSTER_ID
               value: {{ .Values.clusterID }}
             {{- end }}
