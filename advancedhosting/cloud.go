@@ -36,7 +36,6 @@ const (
 	ahClusterPrivateNetwork = "AH_CLUSTER_PRIVATE_NETWORK_NUMBER"
 	ahClusterDatacenter     = "AH_CLUSTER_DATACENTER"
 	ahClusterID             = "AH_CLUSTER_ID"
-	ahClusterNumber         = "AH_CLUSTER_NUMBER"
 )
 
 type cloud struct {
@@ -110,7 +109,16 @@ func newClusterInfo(client *ah.APIClient) (*clusterInfo, error) {
 	}
 
 	clusterID := os.Getenv(ahClusterID)
-	clusterNumber := os.Getenv(ahClusterNumber)
+
+	var clusterNumber string
+
+	if clusterID != "" {
+		cluster, err := client.Clusters.Get(context.Background(), clusterID)
+		if err != nil {
+			return nil, fmt.Errorf("error getting cluster: %v", err)
+		}
+		clusterNumber = cluster.Number
+	}
 
 	return &clusterInfo{PrivateNetworkID: pnID, DatacenterID: datacenterID, ID: clusterID, Number: clusterNumber}, nil
 }
