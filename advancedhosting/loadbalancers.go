@@ -227,7 +227,7 @@ func (l *loadbalancers) loadBalancerStatus(loadBalancer *ah.LoadBalancer) *v1.Lo
 
 func (l *loadbalancers) createLoadBalancer(ctx context.Context, service *v1.Service, nodes []*v1.Node) (*ah.LoadBalancer, error) {
 
-	request, err := l.makeLoadBalancerCreateRequest(ctx, service, nodes)
+	request, err := l.makeLoadBalancerCreateRequest(service, nodes)
 	if err != nil {
 		return nil, fmt.Errorf("Error makeLoadBalancerCreateRequest: %v", err)
 	}
@@ -246,7 +246,7 @@ func (l *loadbalancers) createLoadBalancer(ctx context.Context, service *v1.Serv
 	return loadBalancer, nil
 }
 
-func (l *loadbalancers) makeLoadBalancerCreateRequest(ctx context.Context, service *v1.Service, nodes []*v1.Node) (*ah.LoadBalancerCreateRequest, error) {
+func (l *loadbalancers) makeLoadBalancerCreateRequest(service *v1.Service, nodes []*v1.Node) (*ah.LoadBalancerCreateRequest, error) {
 	request := &ah.LoadBalancerCreateRequest{
 		Name:                  l.loadBalancerName(service),
 		DatacenterID:          l.clusterInfo.DatacenterID,
@@ -254,6 +254,17 @@ func (l *loadbalancers) makeLoadBalancerCreateRequest(ctx context.Context, servi
 		PrivateNetworkIDs:     []string{l.clusterInfo.PrivateNetworkID},
 		BalancingAlgorithm:    l.loadBalancerBalancingAlgorithm(service),
 		ForwardingRules:       l.loadBalancerForwardingRules(service),
+	}
+
+	if l.clusterInfo.ID != "" && l.clusterInfo.Number != "" {
+		request.Meta = map[string]interface{}{
+			"kubernetes": map[string]map[string]string{
+				"cluster": {
+					"id":     l.clusterInfo.ID,
+					"number": l.clusterInfo.Number,
+				},
+			},
+		}
 	}
 
 	if l.loadBalancerHealthChecksEnabled(service) {
