@@ -102,16 +102,14 @@ func testLBGetResponse() *ah.LoadBalancer {
 		},
 		State:              "active",
 		BalancingAlgorithm: "round_robin",
-		HealthChecks: []ah.LBHealthCheck{
-			{
-				Type:               "tcp",
-				URL:                "",
-				Interval:           5,
-				Timeout:            2,
-				UnhealthyThreshold: 5,
-				HealthyThreshold:   5,
-				Port:               8080,
-			},
+		HealthCheck: &ah.LBHealthCheck{
+			Type:               "tcp",
+			URL:                "",
+			Interval:           5,
+			Timeout:            2,
+			UnhealthyThreshold: 5,
+			HealthyThreshold:   5,
+			Port:               8080,
 		},
 		ForwardingRules: []ah.LBForwardingRule{
 			{
@@ -467,7 +465,7 @@ func TestLoadBalancers_EnableHC(t *testing.T) {
 
 	mockedLBAPI := mocks.NewMockLoadBalancersAPI(ctrl)
 	testLB := testLBGetResponse()
-	testLB.HealthChecks = []ah.LBHealthCheck{}
+	testLB.HealthCheck = &ah.LBHealthCheck{}
 	mockedLBAPI.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(testLB, nil)
 	createRequest := &ah.LBHealthCheckCreateRequest{
 		Type:               "tcp",
