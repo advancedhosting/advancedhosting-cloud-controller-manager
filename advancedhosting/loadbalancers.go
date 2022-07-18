@@ -272,7 +272,7 @@ func (l *loadbalancers) makeLoadBalancerCreateRequest(service *v1.Service, nodes
 		if err != nil {
 			return nil, err
 		}
-		request.HealthChecks = []ah.LBHealthCheckCreateRequest{*healthCheck}
+		request.HealthCheck = []ah.LBHealthCheckCreateRequest{*healthCheck}[0]
 	}
 
 	backendNodes, err := l.loadBalancerBackendNodes(nodes)
@@ -567,7 +567,7 @@ func (l *loadbalancers) updateHealthChecks(ctx context.Context, service *v1.Serv
 		return err
 	}
 
-	if len(lb.HealthChecks) == 0 {
+	if lb.HealthCheck.Type == "" {
 		healthCheck, err := l.client.LoadBalancers.CreateHealthCheck(ctx, lb.ID, hc)
 
 		if err != nil {
@@ -590,7 +590,7 @@ func (l *loadbalancers) updateHealthChecks(ctx context.Context, service *v1.Serv
 
 	}
 
-	origHC := lb.HealthChecks[0]
+	origHC := lb.HealthCheck
 
 	if origHC.Type != hc.Type ||
 		origHC.URL != hc.URL ||
@@ -632,11 +632,11 @@ func (l *loadbalancers) updateHealthChecks(ctx context.Context, service *v1.Serv
 }
 
 func (l *loadbalancers) deleteHealthChecks(ctx context.Context, lb *ah.LoadBalancer) error {
-	if len(lb.HealthChecks) == 0 {
+	if lb.HealthCheck.Type == "" {
 		return nil
 	}
 
-	origHC := lb.HealthChecks[0]
+	origHC := lb.HealthCheck
 
 	if err := l.client.LoadBalancers.DeleteHealthCheck(ctx, lb.ID, origHC.ID); err != nil {
 		return err
