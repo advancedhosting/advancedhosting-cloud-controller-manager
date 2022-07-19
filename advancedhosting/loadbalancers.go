@@ -272,7 +272,7 @@ func (l *loadbalancers) makeLoadBalancerCreateRequest(service *v1.Service, nodes
 		if err != nil {
 			return nil, err
 		}
-		request.HealthCheck = []ah.LBHealthCheckCreateRequest{*healthCheck}[0]
+		request.HealthCheck = *healthCheck
 	}
 
 	backendNodes, err := l.loadBalancerBackendNodes(nodes)
