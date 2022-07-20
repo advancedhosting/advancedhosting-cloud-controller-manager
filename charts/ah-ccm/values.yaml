@@ -20,7 +20,7 @@ clusterID: ""
 image:
   repository: advancedhosting/ah-ccm
   pullPolicy: IfNotPresent
-  tag: "v0.1.6"
+  tag: "v0.1.7"
 
 replicaCount: 1
 
