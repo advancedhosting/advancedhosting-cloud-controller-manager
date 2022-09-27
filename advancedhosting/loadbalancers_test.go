@@ -36,6 +36,7 @@ func testAnnotaions() map[string]string {
 		ServiceAnnotationLoadBalancerID:                            "test-lb-id",
 		ServiceAnnotationLoadBalancerName:                          "test-lb-name",
 		ServiceAnnotationLoadBalancerBalancingAlgorithm:            "round_robin",
+		ServiceAnnotationLoadBalancerProxyProtocol:                 "v1",
 		ServiceAnnotationLoadBalancerEnableHealthCheck:             "true",
 		ServiceAnnotationLoadBalancerHealthCheckType:               "tcp",
 		ServiceAnnotationLoadBalancerHealthCheckURL:                "",
@@ -306,6 +307,7 @@ func TestLoadBalancers_UpdateBalancingAlgorithm(t *testing.T) {
 
 	anno := testAnnotaions()
 	anno[ServiceAnnotationLoadBalancerBalancingAlgorithm] = "least_requests"
+	anno[ServiceAnnotationLoadBalancerProxyProtocol] = "v2"
 	svc := testService(clusterInfo.kclient, anno, testPorts())
 
 	status, err := loadBalancers.EnsureLoadBalancer(context.TODO(), "test-sluster-name", svc, testNodes())
