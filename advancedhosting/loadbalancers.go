@@ -41,6 +41,9 @@ const (
 	// ServiceAnnotationLoadBalancerBalancingAlgorithm is the balancing algorithm of the AH Managed Loadbalancer
 	ServiceAnnotationLoadBalancerBalancingAlgorithm = "service.beta.kubernetes.io/ah-loadbalancer-balancing-algorithm"
 
+	// ServiceAnnotationLoadBalancerProxyProtocol is the proxy protocol of the AH Managed Loadbalancer
+	ServiceAnnotationLoadBalancerProxyProtocol = "service.beta.kubernetes.io/ah-loadbalancer-proxy-protocol"
+
 	// ServiceAnnotationLoadBalancerEnableHealthCheck enables health check of the AH Managed Loadbalancer
 	ServiceAnnotationLoadBalancerEnableHealthCheck = "service.beta.kubernetes.io/ah-loadbalancer-healthcheck-enabled"
 
@@ -253,6 +256,7 @@ func (l *loadbalancers) makeLoadBalancerCreateRequest(service *v1.Service, nodes
 		CreatePublicIPAddress: true,
 		PrivateNetworkIDs:     []string{l.clusterInfo.PrivateNetworkID},
 		BalancingAlgorithm:    l.loadBalancerBalancingAlgorithm(service),
+		ProxyProtocol:         l.loadBalancerProxyProtocol(service),
 		ForwardingRules:       l.loadBalancerForwardingRules(service),
 	}
 
@@ -296,6 +300,13 @@ func (l *loadbalancers) loadBalancerBalancingAlgorithm(service *v1.Service) stri
 		return v
 	}
 	return "round_robin"
+}
+
+func (l *loadbalancers) loadBalancerProxyProtocol(service *v1.Service) string {
+	if v, ok := service.Annotations[ServiceAnnotationLoadBalancerProxyProtocol]; ok {
+		return v
+	}
+	return "v1"
 }
 
 func (l *loadbalancers) loadBalancerForwardingRules(service *v1.Service) []ah.LBForwardingRuleCreateRequest {
