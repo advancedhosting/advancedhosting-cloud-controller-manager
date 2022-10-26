@@ -3,7 +3,7 @@ module github.com/advancedhosting/advancedhosting-cloud-controller-manager
 go 1.16
 
 require (
-	github.com/advancedhosting/advancedhosting-api-go v0.9.7
+	github.com/advancedhosting/advancedhosting-api-go v0.9.9
 	github.com/golang/mock v1.5.0
 	k8s.io/api v0.19.3
 	k8s.io/apimachinery v0.19.3

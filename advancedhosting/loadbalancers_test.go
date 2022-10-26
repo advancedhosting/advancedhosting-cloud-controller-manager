@@ -31,7 +31,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 )
 
-func testAnnotaions() map[string]string {
+func testAnnotations() map[string]string {
 	return map[string]string{
 		ServiceAnnotationLoadBalancerID:                            "test-lb-id",
 		ServiceAnnotationLoadBalancerName:                          "test-lb-name",
@@ -65,6 +65,7 @@ func testService(kclient kubernetes.Interface, annotations map[string]string, po
 			Namespace:   "default",
 			Name:        "test-service",
 			Annotations: annotations,
+			UID:         "service-id",
 		},
 		Spec: v1.ServiceSpec{
 			Ports: ports,
@@ -129,7 +130,22 @@ func testLBGetResponse() *ah.LoadBalancer {
 				CloudServerID: "test-cloud-server-2",
 			},
 		},
+		Meta: map[string]interface{}{
+			"kubernetes": map[string]map[string]string{
+				"cluster": {
+					"id":     "some-id",
+					"number": "some-number",
+				},
+				"service": {
+					"id": "custom-uid",
+				},
+			},
+		},
 	}
+}
+
+func testLBListResponse() []ah.LoadBalancer {
+	return []ah.LoadBalancer{*testLBGetResponse()}
 }
 
 func TestLoadBalancers_GetLoadBalancer(t *testing.T) {
@@ -146,8 +162,54 @@ func TestLoadBalancers_GetLoadBalancer(t *testing.T) {
 
 	loadBalancers := newLoadbalancers(mockedClient, clusterInfo)
 
-	anno := testAnnotaions()
+	anno := testAnnotations()
 	anno[ServiceAnnotationLoadBalancerID] = "test-lb-id"
+
+	svc := testService(clusterInfo.kclient, anno, testPorts())
+
+	status, exists, err := loadBalancers.GetLoadBalancer(context.TODO(), "test-sluster-name", svc)
+
+	expectedResult := &v1.LoadBalancerStatus{
+		Ingress: []v1.LoadBalancerIngress{
+			{
+				IP: "1.2.3.4",
+			},
+		},
+	}
+
+	if err != nil {
+		t.Errorf("Unexpected Error: %v", err)
+	}
+
+	if !exists {
+		t.Errorf("Unexpected value: %v", exists)
+	}
+
+	if !reflect.DeepEqual(expectedResult, status) {
+		t.Errorf("Unexpected result, expected %v. got: %v", expectedResult, status)
+	}
+
+}
+
+func TestLoadBalancers_GetLoadBalancerByUID(t *testing.T) {
+	ctrl := gomock.NewController(t)
+
+	defer ctrl.Finish()
+
+	mockedLBAPI := mocks.NewMockLoadBalancersAPI(ctrl)
+
+	filters := map[string]string{
+		"meta": "{\"kubernetes\":{\"service\":{\"id\":\"service-id\"}}",
+	}
+	mockedLBAPI.EXPECT().List(gomock.Any(), gomock.Eq(filters)).Return(testLBListResponse(), nil)
+	mockedClient := &ah.APIClient{LoadBalancers: mockedLBAPI}
+
+	clusterInfo := &clusterInfo{kclient: fake.NewSimpleClientset()}
+
+	loadBalancers := newLoadbalancers(mockedClient, clusterInfo)
+
+	anno := testAnnotations()
+	anno[ServiceAnnotationLoadBalancerID] = ""
 
 	svc := testService(clusterInfo.kclient, anno, testPorts())
 
@@ -187,7 +249,7 @@ func TestLoadBalancers_GetLoadBalancerName(t *testing.T) {
 	clusterInfo := &clusterInfo{kclient: fake.NewSimpleClientset()}
 	loadBalancers := newLoadbalancers(mockedClient, clusterInfo)
 
-	name := loadBalancers.GetLoadBalancerName(context.TODO(), "test-sluster-name", testService(clusterInfo.kclient, testAnnotaions(), testPorts()))
+	name := loadBalancers.GetLoadBalancerName(context.TODO(), "test-sluster-name", testService(clusterInfo.kclient, testAnnotations(), testPorts()))
 
 	expectedResult := "test-lb-name"
 
@@ -214,7 +276,7 @@ func TestLoadBalancers_EnsureLoadBalancerCreateNewLB(t *testing.T) {
 	clusterInfo := &clusterInfo{kclient: fake.NewSimpleClientset()}
 	loadBalancers := newLoadbalancers(mockedClient, clusterInfo)
 
-	svc := testService(clusterInfo.kclient, testAnnotaions(), testPorts())
+	svc := testService(clusterInfo.kclient, testAnnotations(), testPorts())
 
 	_, err := loadBalancers.EnsureLoadBalancer(context.TODO(), "test-sluster-name", svc, testNodes())
 
@@ -248,7 +310,7 @@ func TestLoadBalancers_EnsureNotReadyLoadBalancer(t *testing.T) {
 	clusterInfo := &clusterInfo{kclient: fake.NewSimpleClientset()}
 	loadBalancers := newLoadbalancers(mockedClient, clusterInfo)
 
-	svc := testService(clusterInfo.kclient, testAnnotaions(), testPorts())
+	svc := testService(clusterInfo.kclient, testAnnotations(), testPorts())
 	_, err := loadBalancers.EnsureLoadBalancer(context.TODO(), "test-sluster-name", svc, testNodes())
 
 	if err.Error() != fmt.Sprintf("Load balancer is not active yet: %s", testLB.State) {
@@ -270,7 +332,7 @@ func TestLoadBalancers_EnsureActiveLoadBalancer(t *testing.T) {
 	clusterInfo := &clusterInfo{kclient: fake.NewSimpleClientset()}
 	loadBalancers := newLoadbalancers(mockedClient, clusterInfo)
 
-	svc := testService(clusterInfo.kclient, testAnnotaions(), testPorts())
+	svc := testService(clusterInfo.kclient, testAnnotations(), testPorts())
 	status, err := loadBalancers.EnsureLoadBalancer(context.TODO(), "test-sluster-name", svc, testNodes())
 
 	expectedResult := &v1.LoadBalancerStatus{
@@ -304,7 +366,7 @@ func TestLoadBalancers_UpdateBalancingAlgorithm(t *testing.T) {
 	clusterInfo := &clusterInfo{kclient: fake.NewSimpleClientset()}
 	loadBalancers := newLoadbalancers(mockedClient, clusterInfo)
 
-	anno := testAnnotaions()
+	anno := testAnnotations()
 	anno[ServiceAnnotationLoadBalancerBalancingAlgorithm] = "least_requests"
 	svc := testService(clusterInfo.kclient, anno, testPorts())
 
@@ -341,7 +403,7 @@ func TestLoadBalancers_UpdateLBName(t *testing.T) {
 	clusterInfo := &clusterInfo{kclient: fake.NewSimpleClientset()}
 	loadBalancers := newLoadbalancers(mockedClient, clusterInfo)
 
-	anno := testAnnotaions()
+	anno := testAnnotations()
 	anno[ServiceAnnotationLoadBalancerName] = "test2"
 	svc := testService(clusterInfo.kclient, anno, testPorts())
 
@@ -389,7 +451,7 @@ func TestLoadBalancers_UpdateHC(t *testing.T) {
 	clusterInfo := &clusterInfo{kclient: fake.NewSimpleClientset()}
 	loadBalancers := newLoadbalancers(mockedClient, clusterInfo)
 
-	anno := testAnnotaions()
+	anno := testAnnotations()
 	anno[ServiceAnnotationLoadBalancerHealthCheckType] = "http"
 	anno[ServiceAnnotationLoadBalancerHealthCheckURL] = "/"
 	anno[ServiceAnnotationLoadBalancerHealthCheckInterval] = "6"
@@ -434,7 +496,7 @@ func TestLoadBalancers_DisableHC(t *testing.T) {
 	clusterInfo := &clusterInfo{kclient: fake.NewSimpleClientset()}
 	loadBalancers := newLoadbalancers(mockedClient, clusterInfo)
 
-	anno := testAnnotaions()
+	anno := testAnnotations()
 	anno[ServiceAnnotationLoadBalancerEnableHealthCheck] = "false"
 	svc := testService(clusterInfo.kclient, anno, testPorts())
 
@@ -484,7 +546,7 @@ func TestLoadBalancers_EnableHC(t *testing.T) {
 	clusterInfo := &clusterInfo{kclient: fake.NewSimpleClientset()}
 	loadBalancers := newLoadbalancers(mockedClient, clusterInfo)
 
-	svc := testService(clusterInfo.kclient, testAnnotaions(), testPorts())
+	svc := testService(clusterInfo.kclient, testAnnotations(), testPorts())
 
 	status, err := loadBalancers.EnsureLoadBalancer(context.TODO(), "test-sluster-name", svc, testNodes())
 
@@ -584,7 +646,7 @@ func TestLoadBalancers_UpdateForwardingRules(t *testing.T) {
 		},
 	}
 
-	svc := testService(clusterInfo.kclient, testAnnotaions(), ports)
+	svc := testService(clusterInfo.kclient, testAnnotations(), ports)
 
 	status, err := loadBalancers.EnsureLoadBalancer(context.TODO(), "test-sluster-name", svc, testNodes())
 
@@ -658,7 +720,7 @@ func TestLoadBalancers_UpdateBackendNodes(t *testing.T) {
 	clusterInfo := &clusterInfo{kclient: fake.NewSimpleClientset()}
 	loadBalancers := newLoadbalancers(mockedClient, clusterInfo)
 
-	svc := testService(clusterInfo.kclient, testAnnotaions(), testPorts())
+	svc := testService(clusterInfo.kclient, testAnnotations(), testPorts())
 
 	nodes := []*v1.Node{
 		{
@@ -711,7 +773,7 @@ func TestLoadBalancers_Delete(t *testing.T) {
 	clusterInfo := &clusterInfo{kclient: fake.NewSimpleClientset()}
 	loadBalancers := newLoadbalancers(mockedClient, clusterInfo)
 
-	anno := testAnnotaions()
+	anno := testAnnotations()
 	anno[ServiceAnnotationLoadBalancerID] = "test-lb-id"
 
 	svc := testService(clusterInfo.kclient, anno, testPorts())
@@ -737,7 +799,7 @@ func TestLoadBalancers_EnsureDeletion(t *testing.T) {
 	clusterInfo := &clusterInfo{kclient: fake.NewSimpleClientset()}
 	loadBalancers := newLoadbalancers(mockedClient, clusterInfo)
 
-	anno := testAnnotaions()
+	anno := testAnnotations()
 	anno[ServiceAnnotationLoadBalancerID] = "test-lb-id"
 
 	svc := testService(clusterInfo.kclient, anno, testPorts())
@@ -761,7 +823,7 @@ func TestLoadBalancers_EnsureAlreadyDeletedLB(t *testing.T) {
 	clusterInfo := &clusterInfo{kclient: fake.NewSimpleClientset()}
 	loadBalancers := newLoadbalancers(mockedClient, clusterInfo)
 
-	anno := testAnnotaions()
+	anno := testAnnotations()
 	anno[ServiceAnnotationLoadBalancerID] = "test-lb-id"
 
 	svc := testService(clusterInfo.kclient, anno, testPorts())

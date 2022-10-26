@@ -83,18 +83,26 @@ func (l *loadbalancers) GetLoadBalancer(ctx context.Context, clusterName string,
 
 	lbID := l.loadBalancerID(service)
 	if lbID == "" {
-		return nil, false, nil
-	}
-	loadBalancer, err := l.loadBalancerByID(ctx, lbID)
-
-	if err != nil {
-		if err == ah.ErrResourceNotFound {
-			return nil, false, nil
+		loadBalancer, err := l.loadBalancerByUID(ctx, string(service.UID))
+		if err != nil {
+			if err == ah.ErrResourceNotFound {
+				return nil, false, nil
+			}
+			return nil, false, err
 		}
-		return nil, false, err
-	}
 
-	return l.loadBalancerStatus(loadBalancer), true, nil
+		return l.loadBalancerStatus(loadBalancer), true, nil
+	} else {
+		loadBalancer, err := l.loadBalancerByID(ctx, lbID)
+		if err != nil {
+			if err == ah.ErrResourceNotFound {
+				return nil, false, nil
+			}
+			return nil, false, err
+		}
+
+		return l.loadBalancerStatus(loadBalancer), true, nil
+	}
 }
 
 // GetLoadBalancerName returns the name of the load balancer. Implementations must treat the
@@ -215,6 +223,24 @@ func (l *loadbalancers) loadBalancerByID(ctx context.Context, lbID string) (*ah.
 	return loadBalancer, nil
 }
 
+func (l *loadbalancers) loadBalancerByUID(ctx context.Context, UID string) (*ah.LoadBalancer, error) {
+	if UID == "" {
+		return nil, ah.ErrResourceNotFound
+	}
+	filters := map[string]string{
+		"meta": fmt.Sprintf("{\"kubernetes\":{\"service\":{\"id\":\"%s\"}}", UID),
+	}
+
+	loadBalancers, err := l.client.LoadBalancers.List(ctx, filters)
+	if err != nil {
+		return nil, err
+	}
+	if len(loadBalancers) == 0 {
+		return nil, nil
+	}
+	return &loadBalancers[0], nil
+}
+
 func (l *loadbalancers) loadBalancerStatus(loadBalancer *ah.LoadBalancer) *v1.LoadBalancerStatus {
 	return &v1.LoadBalancerStatus{
 		Ingress: []v1.LoadBalancerIngress{
@@ -262,6 +288,9 @@ func (l *loadbalancers) makeLoadBalancerCreateRequest(service *v1.Service, nodes
 				"cluster": {
 					"id":     l.clusterInfo.ID,
 					"number": l.clusterInfo.Number,
+				},
+				"service": {
+					"id": string(service.UID),
 				},
 			},
 		}
